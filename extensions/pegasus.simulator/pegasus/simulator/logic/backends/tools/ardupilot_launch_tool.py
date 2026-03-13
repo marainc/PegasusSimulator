@@ -67,21 +67,26 @@ class ArduPilotLaunchTool:
             "-f", f"{self._get_vehicle_frame()}",
             "--model", f"{self.model}",
             f"{'--no-rebuild' if self._sitl_already_exists() else ''}",
-            f"--console",
-            f"--map",
+            "--no-extra-ports",
             "-I", f"{self.vehicle_id}",
             "--sysid", f"{self.vehicle_id + 1}",
             "--out", f"udp:127.0.0.1:{14550 + self.vehicle_id * 10}",
+            "--mavproxy-args='--daemon'",
         ]
         command: str = " ".join(command)
-        
-        # Run in a seperate bash window
+
+        # Log to /tmp for debugging
+        log_path = f"/tmp/ardupilot_sitl_{self.vehicle_id}.log"
+        log_file = open(log_path, 'w')
+
+        # Run directly in background (no terminal emulator needed for headless/server use)
         self.ardupilot_process = subprocess.Popen(
-            # ["gnome-terminal", '--disable-factory', '--', 'bash', '-c', command],
-            ["gnome-terminal", '--', 'bash', '-c', command],
+            ['bash', '-c', command],
             cwd=self.root_fs.name,
             shell=False,
             env=self.environment,
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
             preexec_fn=os.setsid
         )
 

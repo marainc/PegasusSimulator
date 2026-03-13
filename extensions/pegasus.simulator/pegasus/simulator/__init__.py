@@ -6,4 +6,7 @@
 __author__ = "Marcelo Jacinto"
 __email__ = "marcelo.jacinto@tecnico.ulisboa.pt"
 
-from .extension import Pegasus_SimulatorExtension
+try:
+    from .extension import Pegasus_SimulatorExtension
+except Exception:
+    pass
