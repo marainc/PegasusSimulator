@@ -627,18 +627,20 @@ class ArduPilotMavlinkBackend(Backend):
 
         self._current_utime += dt
 
-        carb.log_info("Pre Update")
-
-        _, servos =self.ap.pre_update(
+        received, servos = self.ap.pre_update(
             sim_time=self._current_utime
         )
 
-        carb.log_info("Checking is Armed")
+        # Debug: log servo reception periodically
+        if not hasattr(self, '_servo_debug_count'):
+            self._servo_debug_count = 0
+        self._servo_debug_count += 1
+        if self._servo_debug_count <= 5 or self._servo_debug_count % 2000 == 0:
+            print(f"[FDM] step={self._servo_debug_count} recv={received} servos={servos[:4] if servos else ()} online={self.ap.arduPilotOnline} armed={self._armed} fcu={self.ap.fcu_address}:{self.ap.fcu_port_out}", flush=True)
+
         self.update_is_armed()
-        carb.log_info("Update Motor Commands")  
         self.update_motor_commands(servos)
-    
-        carb.log_info("Post Update")
+
         self.ap.post_update(
             sim_time=self._current_utime,
             sensor_data=self._sensor_data
@@ -665,8 +667,9 @@ class ArduPilotMavlinkBackend(Backend):
     def update_motor_commands(self, servos):
         if self._armed and servos != ():
             self._rotor_data.update_input_reference(servos)
-        else:
+        elif not self._armed:
             self._rotor_data.zero_input_reference()
+        # If armed but no new servo data, keep previous commands
 
     def send_heartbeat(self, mav_type=mavutil.mavlink.MAV_TYPE_GENERIC):
         """

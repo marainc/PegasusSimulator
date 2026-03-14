@@ -61,6 +61,13 @@ class ArduPilotLaunchTool:
         Method that will launch a ardupilot instance with the specified configuration
         """
         # sim_vehicle.py -v ArduCopter -f gazebo-iris --mode JSON --console --map
+        # Custom params file for fast SITL startup and tuned PID gains
+        custom_params = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..", "..", "..", "..", "..", "config", "isaac_lab_iris.parm"
+        )
+        custom_params = os.path.realpath(custom_params)
+
         command = [
             "python3", f"{self.ardupilot_dir}/Tools/autotest/sim_vehicle.py",
             "-v", "ArduCopter",
@@ -71,6 +78,8 @@ class ArduPilotLaunchTool:
             "-I", f"{self.vehicle_id}",
             "--sysid", f"{self.vehicle_id + 1}",
             "--out", f"udp:127.0.0.1:{14550 + self.vehicle_id * 10}",
+            "--out", f"udp:127.0.0.1:{5762 + self.vehicle_id * 10}",
+            # f"--add-param-file={custom_params}",  # TODO: fix crash loop with custom parm
             "--mavproxy-args='--daemon'",
         ]
         command: str = " ".join(command)

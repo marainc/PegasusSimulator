@@ -1,0 +1,205 @@
+# Isaac Lab Iris - Optimized for fast startup and stable flight
+# Combines fast_startup.parm + iris_mara_custom.parm + Isaac Lab tweaks
+#
+# Purpose: Provide proper PID tuning while maintaining fast initialization
+# Root cause fix: Original fast_startup.parm was missing all rate PID parameters,
+# causing ArduPilot to use default gains that are 3-6x too low for Iris.
+
+# ============================================================
+# PART 1: FAST STARTUP (from fast_startup.parm)
+# ============================================================
+
+# ===== GPS FAST INITIALIZATION =====
+GPS_TYPE 1               # GPS on serial port (accepts HIL_GPS messages)
+GPS_AUTO_CONFIG 1        # Auto-configure GPS
+SIM_GPS_DELAY 0          # No GPS startup delay
+SIM_GPS_GLITCH_X 0       # Disable GPS glitches
+SIM_GPS_GLITCH_Y 0
+SIM_GPS_GLITCH_Z 0
+SIM_GPS_DRIFT_ALT 0      # No GPS altitude drift
+SIM_GPS_TYPE 1           # GPS type (1=UBLOX)
+
+# Excellent GPS signal quality
+SIM_GPS_NUMSATS 18       # Number of satellites (excellent signal)
+SIM_GPS_HDOP 65          # HDOP in cm (0.65 = excellent)
+SIM_GPS_VDOP 80          # VDOP in cm (0.8 = excellent)
+SIM_GPS_HDG_OFFS 0       # No heading offset
+SIM_GPS_ACC 30           # GPS accuracy 30cm (excellent for SITL)
+
+# ===== EKF3 FAST INITIALIZATION =====
+EK3_IMU_MASK 0           # Use only first IMU (fixed from 3)
+EK3_CHECK_SCALE 50       # Reduce EKF failsafe threshold (less strict)
+EK3_POSNE_M_NSE 0.3      # GPS horizontal position noise (excellent GPS)
+EK3_ALT_M_NSE 1.0        # GPS altitude noise (excellent GPS)
+EK3_MAG_CAL 0            # Compass calibration (0=never)
+EK3_GLITCH_RAD 15        # GPS glitch radius (less strict)
+EK3_ABL_TAU 2.5          # Accel bias learning time constant
+EK3_GBIAS_P_NSE 0.0001   # Gyro bias process noise
+EK3_ABIAS_P_NSE 0.005    # Accel bias process noise
+
+# ===== ARMING CHECKS - DISABLED FOR SITL NOGPS MODE =====
+ARMING_CHECK 0           # Disable ALL arming checks for SITL (was 16384)
+ARMING_GPS_HDOP 1.0      # Require excellent HDOP (ignored when ARMING_CHECK=0)
+ARMING_GPS_SAT_MIN 10    # Require good satellites (ignored when ARMING_CHECK=0)
+ARMING_MIS_ITEMS 0       # Don't require mission items
+GPS_MIN_DGPS 0           # Don't require DGPS
+ARMING_RUDDER 2          # Arming with rudder enabled
+ARMING_OPTIONS 0         # No special arming options
+
+# ===== INS/AHRS FAST CALIBRATION =====
+INS_GYR_CAL 0            # Skip gyro calibration (0=never)
+INS_ACC_BODYFIX 2        # Accelerometer learning disabled
+AHRS_EKF_TYPE 3          # Use EKF3
+AHRS_GPS_GAIN 1.0        # GPS influence on AHRS
+AHRS_GPS_USE 1           # Use GPS
+
+# ===== COMPASS FAST SETUP =====
+COMPASS_LEARN 0          # Disable compass learning
+COMPASS_AUTODEC 1        # Auto-declination
+COMPASS_CAL_FIT 16       # Compass calibration fitness threshold
+
+# ===== SIMULATION SENSOR NOISE (DISABLED) =====
+SIM_BARO_RND 0           # No barometer noise
+SIM_ACC_RND 0            # No accelerometer noise
+SIM_GYR_RND 0            # No gyroscope noise
+SIM_MAG_RND 0            # No magnetometer noise
+SIM_BARO_DELAY 0         # No barometer delay
+SIM_MAG_DELAY 0          # No magnetometer delay
+SIM_WIND_SPD 0           # No wind
+SIM_WIND_DIR 0
+SIM_WIND_TURB 0
+
+# ===== RC FAILSAFE - DISABLED FOR SIMULATION =====
+FS_THR_ENABLE 0          # Disable throttle failsafe (for simulation)
+FENCE_ENABLE 0           # Disable geofence
+FENCE_ACTION 0           # Fence action (0=report only)
+
+# ===== FLIGHT MODES (from oriole.params) =====
+# Mode numbers: 0=Stabilize, 2=AltHold, 4=Guided, 5=Loiter, 6=RTL, 9=Land
+FLTMODE1 0               # Stabilize
+FLTMODE2 0               # Stabilize
+FLTMODE3 0               # Stabilize
+FLTMODE4 5               # Loiter
+FLTMODE5 0               # Stabilize
+FLTMODE6 9               # Land
+FLTMODE_CH 7             # Flight mode channel
+
+# ===== LAND PARAMETERS (from oriole.params) =====
+LAND_ALT_LOW 1000        # Altitude (cm) at which to begin final descent
+LAND_REPOSITION 1        # Allow repositioning during land
+LAND_SPEED 50            # Descent speed (cm/s)
+LAND_SPEED_HIGH 0        # High altitude descent speed (0=use WPNAV_SPEED_DN)
+
+# ===== RTL PARAMETERS (from oriole.params) =====
+RTL_ALT 1500             # RTL altitude (cm) - 15m
+RTL_ALT_FINAL 0          # Final altitude after RTL
+RTL_ALT_TYPE 0           # Altitude type (0=relative)
+RTL_CLIMB_MIN 0          # Minimum climb before returning
+RTL_CONE_SLOPE 3.0       # RTL cone slope
+RTL_LOIT_TIME 5000       # Loiter time at RTL point (ms)
+RTL_OPTIONS 0            # RTL options
+RTL_SPEED 0              # RTL speed (0=use WPNAV_SPEED)
+
+# ===== LOGGING =====
+LOG_DISARMED 0           # Don't log when disarmed
+LOG_REPLAY 0             # Don't replay logs
+LOG_BITMASK 0            # Disable logging for faster simulation
+
+# ============================================================
+# PART 2: FLIGHT CONTROL PID TUNING (from iris_mara_custom.parm)
+# ============================================================
+
+# ===== RATE CONTROLLER (ANGULAR VELOCITY PID) =====
+# These are the CRITICAL parameters that were missing from fast_startup.parm
+# Without these, ArduPilot uses default gains that are 3-6x too low
+
+# Pitch Rate PID
+ATC_RAT_PIT_P 0.18       # Pitch rate P gain (3.6x higher than default 0.05)
+ATC_RAT_PIT_I 0.18       # Pitch rate I gain (was 0 in defaults!)
+ATC_RAT_PIT_D 0.0036     # Pitch rate D gain (12x higher than default 0.0003)
+ATC_RAT_PIT_IMAX 0.5     # Pitch rate I gain maximum
+ATC_RAT_PIT_FLTD 10      # Pitch rate filter frequency (D term)
+ATC_RAT_PIT_FLTT 10      # Pitch rate filter frequency (target)
+
+# Roll Rate PID
+ATC_RAT_RLL_P 0.18       # Roll rate P gain (3.6x higher than default 0.05)
+ATC_RAT_RLL_I 0.18       # Roll rate I gain (was 0 in defaults!)
+ATC_RAT_RLL_D 0.0036     # Roll rate D gain (12x higher than default 0.0003)
+ATC_RAT_RLL_IMAX 0.5     # Roll rate I gain maximum
+ATC_RAT_RLL_FLTD 10      # Roll rate filter frequency (D term)
+ATC_RAT_RLL_FLTT 10      # Roll rate filter frequency (target)
+
+# Yaw Rate PID
+ATC_RAT_YAW_P 0.28       # Yaw rate P gain (14x higher than default 0.02)
+ATC_RAT_YAW_I 0.028      # Yaw rate I gain (was 0 in defaults!)
+ATC_RAT_YAW_IMAX 0.5     # Yaw rate I gain maximum
+ATC_RAT_YAW_FLTE 2       # Yaw rate filter frequency (error)
+ATC_RAT_YAW_FLTT 10      # Yaw rate filter frequency (target)
+
+# ===== ATTITUDE CONTROLLER (ANGLE PID) =====
+ATC_ANG_PIT_P 4.5        # Pitch angle P gain
+ATC_ANG_RLL_P 4.5        # Roll angle P gain
+ATC_ANG_YAW_P 4.5        # Yaw angle P gain
+
+# ===== POSITION CONTROLLER =====
+PSC_VELXY_P 2.0          # Horizontal velocity P gain
+PSC_VELXY_I 1.0          # Horizontal velocity I gain
+PSC_VELXY_D 0.5          # Horizontal velocity D gain
+PSC_VELXY_IMAX 1000      # Horizontal velocity I gain maximum
+
+PSC_VELZ_P 5.0           # Vertical velocity P gain
+PSC_POSZ_P 1.0           # Altitude hold P gain
+PSC_ACCZ_P 0.5           # Vertical acceleration P gain
+
+# ===== LOITER/NAVIGATION CONTROL =====
+LOIT_SPEED 1250          # Maximum horizontal speed in loiter (cm/s)
+LOIT_ACC_MAX 500         # Maximum horizontal acceleration in loiter (cm/s/s)
+LOIT_BRK_ACCEL 250       # Loiter braking acceleration (cm/s/s)
+LOIT_BRK_JERK 500        # Loiter braking jerk (cm/s/s/s)
+
+WPNAV_SPEED 1000         # Waypoint horizontal speed (cm/s)
+WPNAV_RADIUS 200         # Waypoint radius (cm)
+WPNAV_ACCEL 200          # Waypoint acceleration (cm/s/s)
+
+# ===== PILOT CONTROL RESPONSIVENESS =====
+PILOT_ACCEL_Z 250        # Vertical acceleration in cm/s/s
+PILOT_SPEED_UP 300       # Maximum climb rate in cm/s
+PILOT_SPEED_DN 200       # Maximum descent rate in cm/s
+
+# ============================================================
+# PART 3: ISAAC LAB SPECIFIC OPTIMIZATIONS
+# ============================================================
+
+# ===== SIMULATION TIMING =====
+SIM_SPEEDUP 1            # Real-time for Isaac Lab (physics dt=1/400)
+
+# ===== BATTERY MODEL (STANDARD IRIS) =====
+BATT_CAPACITY 5200       # Battery capacity in mAh (standard Iris)
+BATT_MONITOR 4           # Analog voltage and current
+BATT_LOW_VOLT 10.5       # Low voltage threshold
+BATT_CRT_VOLT 10.0       # Critical voltage threshold
+
+# ===== MOTOR MODEL (IRIS QUADRATIC THRUST CURVE) =====
+MOT_BAT_VOLT_MAX 12.6    # Maximum battery voltage
+MOT_BAT_VOLT_MIN 10.0    # Minimum battery voltage
+MOT_THST_EXPO 0.55       # Thrust exponent (0.55 = quadratic thrust curve)
+MOT_SPIN_MIN 0.15        # Minimum motor spin (15%)
+MOT_SPIN_MAX 0.95        # Maximum motor spin (95%)
+
+# ===== FRAME CONFIGURATION =====
+FRAME_CLASS 1            # Quad
+FRAME_TYPE 1             # X configuration
+
+# ===== SERIAL PROTOCOL =====
+SERIAL1_PROTOCOL 2       # MAVLink protocol on serial 1
+
+# ============================================================
+# EXPECTED RESULTS
+# ============================================================
+# With these parameters, you should see:
+# - GPS lock: IMMEDIATE (18 satellites, HDOP 0.65)
+# - EKF3 initialized: 2-3 seconds
+# - Ready to arm: 3-5 seconds total
+# - Stable hover: Roll/Pitch within ±2-5°
+# - Balanced motors: All 4 motors within 5% of each other
+# - Responsive controls: Crisp response, no sluggishness
